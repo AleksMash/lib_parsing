@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 from pathlib import Path
 from urllib.parse import urljoin, unquote
@@ -6,12 +7,12 @@ from urllib.parse import urljoin, unquote
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filepath, sanitize_filename
 import requests
+from retry import retry
 
 
 def check_for_redirect(response: requests.Response):
-    for happend_response in response.history:
-        if happend_response.status_code>=300:
-            raise requests.HTTPError
+    if response.history:
+        raise requests.HTTPError
 
 
 def parse_book_page(html, page_url):
@@ -22,8 +23,7 @@ def parse_book_page(html, page_url):
         page_url - URL of the page'''
     soup = BeautifulSoup(html, 'lxml')
     splitted_text = soup.find('h1').text.split('::')
-    book_title = splitted_text[0].strip()
-    author = splitted_text[1].strip()
+    book_title, author = map(lambda s: s.strip(), splitted_text)
     img_path = soup.find('div', class_='bookimage').find('img')['src']
     img_url = urljoin(page_url, img_path)
     img_file_name = os.path.basename(unquote(img_path))
@@ -41,6 +41,7 @@ def parse_book_page(html, page_url):
     }
 
 
+@retry(requests.ConnectionError, jitter=0.5, tries=5)
 def download_image(url, filename):
     """!!! filename must be a valid path
      to the image file. Ensure that it is properly prepared!!!"""
@@ -51,45 +52,67 @@ def download_image(url, filename):
             file.write(response.content)
 
 
-def download_book(url, filename):
+@retry(requests.ConnectionError, jitter=0.5, tries=5)
+def download_book(url, params, filename):
     """!!! filename must be a valid path
      to the *.txt file !!! Ensure that it is properly prepared"""
-    response = requests.get(url)
+    response = requests.get(url, params=params)
     check_for_redirect(response)
     response.raise_for_status()
-    print(f'Download book from {url}')
     with open(filename, 'wt') as file:
         file.write(response.text)
-    print('done!')
+    return response
 
 
-def download_books_with_title(first, last, folder):
+@retry(requests.ConnectionError, jitter=0.5, tries=5)
+def get_response(url):
+    return requests.get(url)
+
+
+def main(first, last, folder):
     Path('images').mkdir(parents=True, exist_ok=True)
     san_folder = sanitize_filepath(folder)
     Path(san_folder).mkdir(parents=True, exist_ok=True)
     comments_delimiter = ', \n'
-    for i in range(first,last+1):
-        response = requests.get(f'https://tululu.org/b{i}/')
-        response.raise_for_status()
+    for book_id in range(first,last+1):
         try:
+            response = get_response(f'https://tululu.org/b{book_id}/')
+            response.raise_for_status()
             check_for_redirect(response)
-        except requests.HTTPError:
-            pass
+        except requests.HTTPError as e:
+            print(f'Не удается найти главную страницу книги по адресу:'
+                  f'https://tululu.org/b{book_id}/', file=sys.stderr)
+        except requests.ConnectionError as e:
+            print('Проблема с интернет-соединением', file=sys.stderr)
+            print(e)
+            sys.exit()
         else:
-            book_data = parse_book_page(response.text, response.url)
-            filepath = os.path.join(san_folder, sanitize_filename(f'{i}. {book_data["title"]}.txt'))
+            book_info = parse_book_page(response.text, response.url)
+            filepath = os.path.join(san_folder, sanitize_filename(f'{book_id}. {book_info["title"]}.txt'))
             try:
-                download_book(f'https://tululu.org/txt.php?id={i}', filepath)
-            except requests.HTTPError:
-                pass
-            download_image(book_data['img_url'], os.path.join('images', book_data['img_file_name']))
-            info_file_path = os.path.join(san_folder, f'{i}. info.txt')
+                params = {'id': book_id}
+                response = download_book('https://tululu.org/txt.php', params, filepath)
+            except requests.HTTPError as e:
+                print(f'Не удается скачать книгу с URL: {response.url}', file=sys.stderr)
+            except requests.ConnectionError as e:
+                print('Проблема с интернет-соединением', file=sys.stderr)
+                print(e)
+                sys.exit()
+            try:
+                download_image(book_info['img_url'], os.path.join('images', book_info['img_file_name']))
+            except requests.HTTPError as e:
+                print(f'Не удается скачать изображение с URL: {book_info["img_url"]}', file=sys.stderr)
+            except requests.ConnectionError as e:
+                print('Проблема с интернет-соединением', file=sys.stderr)
+                print(e)
+                sys.exit()
+            info_file_path = os.path.join(san_folder, f'{book_id}. info.txt')
             with open(info_file_path, 'wt') as file:
-                file.write(f'Наименование: {book_data["title"]}\n')
-                file.write(f'Автор: {book_data["author"]}\n')
+                file.write(f'Наименование: {book_info["title"]}\n')
+                file.write(f'Автор: {book_info["author"]}\n')
                 file.write(f'Путь к файлу книги: {os.path.abspath(filepath)}\n')
-                file.write(f'Жанры: {", ".join(book_data["genres"])}\n\n')
-                file.write(f'Комментарии:\n\n{comments_delimiter.join(book_data["comments"])}')
+                file.write(f'Жанры: {", ".join(book_info["genres"])}\n\n')
+                file.write(f'Комментарии:\n\n{comments_delimiter.join(book_info["comments"])}')
 
 
 if __name__ == "__main__":
@@ -104,5 +127,4 @@ if __name__ == "__main__":
     if last_id<first_id:
         print('ID2 должен быть больше или равен ID1')
     else:
-        download_books_with_title(first_id, last_id, args.folder)
-        print('Книги скачаны')
+        main(first_id, last_id, args.folder)
