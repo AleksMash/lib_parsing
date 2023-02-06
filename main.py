@@ -1,6 +1,7 @@
 import os
+import argparse
 from pathlib import Path
-from urllib.parse import urljoin, urlsplit, unquote
+from urllib.parse import urljoin, unquote
 
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filepath, sanitize_filename
@@ -15,7 +16,7 @@ def check_for_redirect(response: requests.Response):
 
 def parse_book_page(html, page_url):
     '''Return dict with parsed book data:
-        title, author, genres, comments, *.txt file URL, title image URL
+        title, author, genres (list), comments (list), image file name, title image URL
     Arguments:
         html - html (str) content of the web page.
         page_url - URL of the page'''
@@ -41,7 +42,8 @@ def parse_book_page(html, page_url):
 
 
 def download_image(url, filename):
-    """!!! filename must be a valid path to the image file !!!"""
+    """!!! filename must be a valid path
+     to the image file. Ensure that it is properly prepared!!!"""
     response = requests.get(url)
     response.raise_for_status()
     if not os.path.exists(filename):
@@ -50,6 +52,8 @@ def download_image(url, filename):
 
 
 def download_book(url, filename):
+    """!!! filename must be a valid path
+     to the *.txt file !!! Ensure that it is properly prepared"""
     response = requests.get(url)
     check_for_redirect(response)
     response.raise_for_status()
@@ -57,35 +61,11 @@ def download_book(url, filename):
         file.write(response.text)
 
 
-def download_books():
-    Path('books').mkdir(parents=True, exist_ok=True)
-    for i in range(2,3):
-        try:
-            download_book(f'https://tululu.org/txt.php?id={i}',
-                       f'books/book-{i}.txt')
-        except requests.HTTPError:
-           pass
-
-
-def download_txt(url, filename, folder='books/'):
-    """Функция для скачивания текстовых файлов.
-    Args:
-        url (str): Cсылка на текст, который хочется скачать.
-        filename (str): Имя файла, с которым сохранять.
-        folder (str): Папка, куда сохранять.
-    Returns:
-        str: Путь до файла, куда сохранён текст.
-    """
+def download_books_with_title(first, last, folder):
+    Path('images').mkdir(parents=True, exist_ok=True)
     san_folder = sanitize_filepath(folder)
     Path(san_folder).mkdir(parents=True, exist_ok=True)
-    filepath=os.path.join(folder, sanitize_filename(f'{filename}.txt'))
-    download_book(url=url, filename=filepath)
-    return filepath
-
-
-def download_books_with_title():
-    Path('images').mkdir(parents=True, exist_ok=True)
-    for i in range(5,6):
+    for i in range(first,last+1):
         response = requests.get(f'https://tululu.org/b{i}/')
         response.raise_for_status()
         try:
@@ -93,23 +73,19 @@ def download_books_with_title():
         except requests.HTTPError:
             pass
         else:
-            print(parse_book_page(response.text, response.url))
-            # print(book_file, '\n', genres)
-            # for comment in comments_tags:
-            #     print(comment.span.text)
-            # download_image(img_url, os.path.join('images', img_file_name))
-            # try:
-            #     download_txt(f'https://tululu.org/txt.php?id={i}',book_file)
-            # except requests.HTTPError:
-            #     pass
-
-
-    # image_tag = soup.find('img', class_='attachment-post-image')['src']
-    # print(image_tag, '\n')
-    # entry_html = soup.find('div', class_='entry-content')
-    # print(entry_html.text)
+            book_data = parse_book_page(response.text, response.url)
+            filepath = os.path.join(san_folder, sanitize_filename(f'{i}. {book_data["title"]}.txt'))
+            try:
+                download_book(f'https://tululu.org/txt.php?id={i}', filepath)
+            except requests.HTTPError:
+                pass
+            download_image(book_data['img_url'], os.path.join('images', book_data['img_file_name']))
 
 
 if __name__ == "__main__":
-    download_books_with_title()
-
+    parser = argparse.ArgumentParser(description="Load txt books from tululu.org")
+    parser.add_argument("first_id", type=int, help="ID первой книги")
+    parser.add_argument("last_id", type=int, help="ID последней книги")
+    parser.add_argument("-f", "--folder", type=str, default='books', help="папка, в которую будут скачаны книги")
+    args = parser.parse_args()
+    download_books_with_title(args.first_id, args.last_id, args.folder)
