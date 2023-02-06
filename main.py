@@ -72,10 +72,12 @@ def download_books_with_title():
             # img_path = soup.find('div', class_='bookimage').find('img')['src']
             # img_url = urljoin(response.url, img_path)
             # img_file_name = os.path.basename(unquote(img_path))
-            comments_tags = soup.find_all('div', class_='texts')
-            print('\n', book_file, '\n')
-            for comment in comments_tags:
-                print(comment.span.text)
+            # comments_tags = soup.find_all('div', class_='texts')
+            genre_tags = soup.find('span', class_='d_book')
+            genres = [a.text for a in genre_tags.find_all('a')]
+            print(book_file, '\n', genres)
+            # for comment in comments_tags:
+            #     print(comment.span.text)
             # download_image(img_url, os.path.join('images', img_file_name))
             # try:
             #     download_txt(f'https://tululu.org/txt.php?id={i}',book_file)
