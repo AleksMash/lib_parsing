@@ -13,6 +13,33 @@ def check_for_redirect(response: requests.Response):
             raise requests.HTTPError
 
 
+def parse_book_page(html, page_url):
+    '''Return dict with parsed book data:
+        title, author, genres, comments, *.txt file URL, title image URL
+    Arguments:
+        html - html (str) content of the web page.
+        page_url - URL of the page'''
+    soup = BeautifulSoup(html, 'lxml')
+    splitted_text = soup.find('h1').text.split('::')
+    book_title = splitted_text[0].strip()
+    author = splitted_text[1].strip()
+    img_path = soup.find('div', class_='bookimage').find('img')['src']
+    img_url = urljoin(page_url, img_path)
+    img_file_name = os.path.basename(unquote(img_path))
+    comments_tags = soup.find_all('div', class_='texts')
+    comments = [c.span.text for c in comments_tags]
+    genre_tags = soup.find('span', class_='d_book')
+    genres = [a.text for a in genre_tags.find_all('a')]
+    return {
+        'title':book_title,
+        'author':author,
+        'genres':genres,
+        'comments':comments,
+        'img_file_name':img_file_name,
+        'img_url':img_url
+    }
+
+
 def download_image(url, filename):
     """!!! filename must be a valid path to the image file !!!"""
     response = requests.get(url)
@@ -58,7 +85,7 @@ def download_txt(url, filename, folder='books/'):
 
 def download_books_with_title():
     Path('images').mkdir(parents=True, exist_ok=True)
-    for i in range(1,11):
+    for i in range(5,6):
         response = requests.get(f'https://tululu.org/b{i}/')
         response.raise_for_status()
         try:
@@ -66,16 +93,8 @@ def download_books_with_title():
         except requests.HTTPError:
             pass
         else:
-            soup = BeautifulSoup(response.text, 'lxml')
-            splitted_text = soup.find('h1').text.split('::')
-            book_file = f'{i}. {splitted_text[0].strip()}'
-            # img_path = soup.find('div', class_='bookimage').find('img')['src']
-            # img_url = urljoin(response.url, img_path)
-            # img_file_name = os.path.basename(unquote(img_path))
-            # comments_tags = soup.find_all('div', class_='texts')
-            genre_tags = soup.find('span', class_='d_book')
-            genres = [a.text for a in genre_tags.find_all('a')]
-            print(book_file, '\n', genres)
+            print(parse_book_page(response.text, response.url))
+            # print(book_file, '\n', genres)
             # for comment in comments_tags:
             #     print(comment.span.text)
             # download_image(img_url, os.path.join('images', img_file_name))
