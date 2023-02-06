@@ -57,14 +57,17 @@ def download_book(url, filename):
     response = requests.get(url)
     check_for_redirect(response)
     response.raise_for_status()
+    print(f'Download book from {url}')
     with open(filename, 'wt') as file:
         file.write(response.text)
+    print('done!')
 
 
 def download_books_with_title(first, last, folder):
     Path('images').mkdir(parents=True, exist_ok=True)
     san_folder = sanitize_filepath(folder)
     Path(san_folder).mkdir(parents=True, exist_ok=True)
+    comments_delimiter = ', \n'
     for i in range(first,last+1):
         response = requests.get(f'https://tululu.org/b{i}/')
         response.raise_for_status()
@@ -80,6 +83,13 @@ def download_books_with_title(first, last, folder):
             except requests.HTTPError:
                 pass
             download_image(book_data['img_url'], os.path.join('images', book_data['img_file_name']))
+            info_file_path = os.path.join(san_folder, f'{i}. info.txt')
+            with open(info_file_path, 'wt') as file:
+                file.write(f'Наименование: {book_data["title"]}\n')
+                file.write(f'Автор: {book_data["author"]}\n')
+                file.write(f'Путь к файлу книги: {os.path.abspath(filepath)}\n')
+                file.write(f'Жанры: {", ".join(book_data["genres"])}\n\n')
+                file.write(f'Комментарии:\n\n{comments_delimiter.join(book_data["comments"])}')
 
 
 if __name__ == "__main__":
@@ -88,4 +98,11 @@ if __name__ == "__main__":
     parser.add_argument("last_id", type=int, help="ID последней книги")
     parser.add_argument("-f", "--folder", type=str, default='books', help="папка, в которую будут скачаны книги")
     args = parser.parse_args()
-    download_books_with_title(args.first_id, args.last_id, args.folder)
+    first_id = args.first_id
+    last_id = args.last_id
+    folder = args.folder
+    if last_id<first_id:
+        print('ID2 должен быть больше или равен ID1')
+    else:
+        download_books_with_title(first_id, last_id, args.folder)
+        print('Книги скачаны')
