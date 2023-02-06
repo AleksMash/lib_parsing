@@ -68,14 +68,17 @@ def download_books_with_title():
         else:
             soup = BeautifulSoup(response.text, 'lxml')
             splitted_text = soup.find('h1').text.split('::')
-            filename = f'{i}. {splitted_text[0].strip()}'
-            img_path = soup.find('div', class_='bookimage').find('img')['src']
-            img_url = urljoin(response.url, img_path)
-            img_file_name = os.path.basename(unquote(img_path))
-            download_image(img_url, os.path.join('images', img_file_name))
-
+            book_file = f'{i}. {splitted_text[0].strip()}'
+            # img_path = soup.find('div', class_='bookimage').find('img')['src']
+            # img_url = urljoin(response.url, img_path)
+            # img_file_name = os.path.basename(unquote(img_path))
+            comments_tags = soup.find_all('div', class_='texts')
+            print('\n', book_file, '\n')
+            for comment in comments_tags:
+                print(comment.span.text)
+            # download_image(img_url, os.path.join('images', img_file_name))
             # try:
-            #     download_txt(f'https://tululu.org/txt.php?id={i}',filename)
+            #     download_txt(f'https://tululu.org/txt.php?id={i}',book_file)
             # except requests.HTTPError:
             #     pass
 
