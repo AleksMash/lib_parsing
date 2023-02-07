@@ -98,8 +98,8 @@ def main():
             print(e)
             sys.exit()
         else:
-            book_info = parse_book_page(response.text, response.url)
-            filepath = os.path.join(san_folder, sanitize_filename(f'{book_id}. {book_info["title"]}.txt'))
+            book_parsed = parse_book_page(response.text, response.url)
+            filepath = os.path.join(san_folder, sanitize_filename(f'{book_id}. {book_parsed["title"]}.txt'))
             try:
                 params = {'id': book_id}
                 response = download_book('https://tululu.org/txt.php', params, filepath)
@@ -110,20 +110,20 @@ def main():
                 print(e)
                 sys.exit()
             try:
-                download_image(book_info['img_url'], os.path.join('images', book_info['img_file_name']))
+                download_image(book_parsed['img_url'], os.path.join('images', book_parsed['img_file_name']))
             except requests.HTTPError as e:
-                print(f'Не удается скачать изображение с URL: {book_info["img_url"]}', file=sys.stderr)
+                print(f'Не удается скачать изображение с URL: {book_parsed["img_url"]}', file=sys.stderr)
             except requests.ConnectionError as e:
                 print('Проблема с интернет-соединением', file=sys.stderr)
                 print(e)
                 sys.exit()
             info_file_path = os.path.join(san_folder, f'{book_id}. info.txt')
             with open(info_file_path, 'wt') as file:
-                file.write(f'Наименование: {book_info["title"]}\n')
-                file.write(f'Автор: {book_info["author"]}\n')
+                file.write(f'Наименование: {book_parsed["title"]}\n')
+                file.write(f'Автор: {book_parsed["author"]}\n')
                 file.write(f'Путь к файлу книги: {os.path.abspath(filepath)}\n')
-                file.write(f'Жанры: {", ".join(book_info["genres"])}\n\n')
-                file.write(f'Комментарии:\n\n{comments_delimiter.join(book_info["comments"])}')
+                file.write(f'Жанры: {", ".join(book_parsed["genres"])}\n\n')
+                file.write(f'Комментарии:\n\n{comments_delimiter.join(book_parsed["comments"])}')
 
 
 if __name__ == "__main__":
