@@ -16,11 +16,11 @@ def check_for_redirect(response: requests.Response):
 
 
 def parse_book_page(html, page_url):
-    '''Return dict with parsed book data:
+    """Return dict with parsed book data:
         title, author, genres (list), comments (list), image file name, title image URL
     Arguments:
         html - html (str) content of the web page.
-        page_url - URL of the page'''
+        page_url - URL of the page"""
     soup = BeautifulSoup(html, 'lxml')
     splitted_text = soup.find('h1').text.split('::')
     book_title, author = map(lambda s: s.strip(), splitted_text)
@@ -32,12 +32,12 @@ def parse_book_page(html, page_url):
     genre_tags = soup.find('span', class_='d_book')
     genres = [a.text for a in genre_tags.find_all('a')]
     return {
-        'title':book_title,
-        'author':author,
-        'genres':genres,
-        'comments':comments,
-        'img_file_name':img_file_name,
-        'img_url':img_url
+        'title': book_title,
+        'author': author,
+        'genres': genres,
+        'comments': comments,
+        'img_file_name': img_file_name,
+        'img_url': img_url
     }
 
 
