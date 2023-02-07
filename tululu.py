@@ -69,12 +69,23 @@ def get_response(url):
     return requests.get(url)
 
 
-def main(first, last, folder):
+def main():
+    parser = argparse.ArgumentParser(description="Load txt books from tululu.org")
+    parser.add_argument("first_id", type=int, help="ID первой книги")
+    parser.add_argument("last_id", type=int, help="ID последней книги")
+    parser.add_argument("-f", "--folder", type=str, default='books', help="папка, в которую будут скачаны книги")
+    args = parser.parse_args()
+    first_id = args.first_id
+    last_id = args.last_id
+    folder = args.folder
+    if last_id<first_id:
+        print('ID2 должен быть больше или равен ID1')
+        return
     Path('images').mkdir(parents=True, exist_ok=True)
     san_folder = sanitize_filepath(folder)
     Path(san_folder).mkdir(parents=True, exist_ok=True)
     comments_delimiter = ', \n'
-    for book_id in range(first,last+1):
+    for book_id in range(first_id,last_id+1):
         try:
             response = get_response(f'https://tululu.org/b{book_id}/')
             response.raise_for_status()
@@ -116,15 +127,4 @@ def main(first, last, folder):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Load txt books from tululu.org")
-    parser.add_argument("first_id", type=int, help="ID первой книги")
-    parser.add_argument("last_id", type=int, help="ID последней книги")
-    parser.add_argument("-f", "--folder", type=str, default='books', help="папка, в которую будут скачаны книги")
-    args = parser.parse_args()
-    first_id = args.first_id
-    last_id = args.last_id
-    folder = args.folder
-    if last_id<first_id:
-        print('ID2 должен быть больше или равен ID1')
-    else:
-        main(first_id, last_id, args.folder)
+    main()
