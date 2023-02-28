@@ -34,10 +34,10 @@ def parse_book_page(html, page_url):
     return {
         'title': book_title,
         'author': author,
-        'genres': genres,
+        'img_url': img_url,
         'comments': comments,
+        'genres': genres,
         'img_file_name': img_file_name,
-        'img_url': img_url
     }
 
 
