@@ -20,10 +20,10 @@ def get_books_urls(page_start, page_end):
         url = urljoin(page_base_url, str(page))
         response = get_response(url)
         soup = BeautifulSoup(response.text, 'lxml')
-        div = soup.find('div', id='content')
-        tables = div.find_all('table', class_='d_book')
+        selector = 'div#content table.d_book'
+        tables = soup.select(selector)
         for table in tables:
-            href: str = table.tr.a['href']
+            href = table.tr.a['href']
             book_urls.append({
                 'url': urljoin('https://tululu.org/', href),
                 'id': href.removeprefix('/b').removesuffix('/')
@@ -39,7 +39,6 @@ def main():
     args = parser.parse_args()
     first_page = args.first_page
     last_page = args.last_page
-    print(f'Грузим страницы {first_page} по {last_page}')
     folder = args.folder
     if last_page < first_page:
         print('Последня страница не может быть меньше первой')
@@ -74,7 +73,6 @@ def main():
             try:
                 params = {'id': book_id}
                 count += 1
-                print(f'Грузим книгу {count}', url)
                 filepath = os.path.join(san_folder, sanitize_filename(f'{count}-я книга. {book_parsed["title"]}.txt'))
                 response = download_book('https://tululu.org/txt.php', params, filepath)
             except requests.HTTPError as e:
@@ -98,9 +96,10 @@ def main():
                 books_info.append(book_parsed)
         books_json = json.dumps(books_info, ensure_ascii=False, indent=4)
         info_file_path = os.path.join(san_folder, 'books_info.json')
-        with open(info_file_path, "w", ) as my_file:
+        with open(info_file_path, "w") as my_file:
             my_file.write(books_json)
 
 
 if __name__ == "__main__":
+    # print(json.dumps('books\2-я книга. Звездный зверь ( Звездное чудовище).txt', ensure_ascii=False, indent=4))
     main()

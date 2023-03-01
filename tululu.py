@@ -22,15 +22,15 @@ def parse_book_page(html, page_url):
         html - html (str) content of the web page.
         page_url - URL of the page"""
     soup = BeautifulSoup(html, 'lxml')
-    splitted_text = soup.find('h1').text.split('::')
+    splitted_text = soup.select('h1')[0].text.split('::')
     book_title, author = map(lambda s: s.strip(), splitted_text)
-    img_path = soup.find('div', class_='bookimage').find('img')['src']
+    img_path = soup.select_one('div.bookimage img')['src']
     img_url = urljoin(page_url, img_path)
     img_file_name = os.path.basename(unquote(img_path))
-    comments_tags = soup.find_all('div', class_='texts')
+    comments_tags = soup.select('div.texts')
     comments = [c.span.text for c in comments_tags]
-    genre_tags = soup.find('span', class_='d_book')
-    genres = [a.text for a in genre_tags.find_all('a')]
+    genre_tags = soup.select('span.d_book a')
+    genres = [a.text for a in genre_tags]
     return {
         'title': book_title,
         'author': author,
