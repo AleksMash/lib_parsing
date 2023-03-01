@@ -13,12 +13,32 @@ from tululu import (parse_book_page, get_response, check_for_redirect,
                     download_book, download_image)
 
 
-def get_books_urls(page_start, page_end):
+def get_books_urls(page_start, page_end=None):
     page_base_url = 'https://tululu.org/l55/'
     book_urls = []
-    for page in range(page_start, page_end+1):
+    response = get_response(page_base_url)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, 'lxml')
+    max_page = int(soup.select('a.npage')[-1].text)
+    if page_start > max_page:
+        print(f'Первая страница, указанная при вызове скрипта больше'
+              f' максимального числа страниц ({max_page})')
+        sys.exit()
+    if page_end:
+        if page_end > max_page:
+            print(f'Последняя страница, указанная при вызове скрипта, превышает '
+                  f'максимальное число страниц ({max_page})\n'
+                  f'будут скачаны книги со страниц {page_start}-{max_page}')
+            page_end_checked = max_page + 1
+        else:
+            page_end_checked = page_end + 1
+    else:
+        print(f'Будут скачаны книги со страниц {page_start}-{max_page}')
+        page_end_checked = max_page + 1
+    for page in range(page_start, page_end_checked):
         url = urljoin(page_base_url, str(page))
         response = get_response(url)
+        response.raise_for_status()
         soup = BeautifulSoup(response.text, 'lxml')
         selector = 'div#content table.d_book'
         tables = soup.select(selector)
@@ -34,19 +54,19 @@ def get_books_urls(page_start, page_end):
 def main():
     parser = argparse.ArgumentParser(description="Load txt books from tululu.org from pages")
     parser.add_argument("first_page", type=int, help="Первая страница")
-    parser.add_argument("last_page", type=int, help="Последняя страница")
+    parser.add_argument("--last_page", type=int, help="Последняя страница")
     parser.add_argument("-f", "--folder", type=str, default='books', help="папка, в которую будут скачаны книги")
     args = parser.parse_args()
     first_page = args.first_page
     last_page = args.last_page
     folder = args.folder
-    if last_page < first_page:
+    if last_page and last_page < first_page:
         print('Последня страница не может быть меньше первой')
         return
     if first_page <= 0:
         print('Первая страница должна быть не менее 1')
         return
-    book_urls = get_books_urls(first_page, last_page+1)
+    book_urls = get_books_urls(first_page, last_page)
     Path('images').mkdir(parents=True, exist_ok=True)
     san_folder = sanitize_filepath(folder)
     Path(san_folder).mkdir(parents=True, exist_ok=True)
@@ -58,6 +78,7 @@ def main():
         url = book_url['url']
         book_id = book_url['id']
         try:
+            print(f'Скачиваем книгу {book_url["url"]}')
             response = get_response(book_url['url'])
             response.raise_for_status()
             check_for_redirect(response)
@@ -76,7 +97,7 @@ def main():
                 filepath = os.path.join(san_folder, sanitize_filename(f'{count}-я книга. {book_parsed["title"]}.txt'))
                 response = download_book('https://tululu.org/txt.php', params, filepath)
             except requests.HTTPError as e:
-                print(f'Не удается скачать книгу с URL: {response.url}', file=sys.stderr)
+                print(f'Не удается найти ссылку для загрузки книги: {response.url}', file=sys.stderr)
                 count -= 1
             except requests.ConnectionError as e:
                 print('Проблема с интернет-соединением', file=sys.stderr)
