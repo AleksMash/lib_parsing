@@ -53,7 +53,7 @@ def get_books_urls(page_start, page_end=None):
 
 def main():
     parser = argparse.ArgumentParser(description="Load txt books from tululu.org from pages")
-    parser.add_argument("--first_page", type=int, help="Первая страница")
+    parser.add_argument("--first_page", type=int, help="Первая страница", default=1)
     parser.add_argument("--last_page", type=int, help="Последняя страница")
     parser.add_argument("-df", "--dest_folder", type=str, default='books', help="папка, в которую будут скачаны книги"
                                                                                 ", изображения обложек и помещен "
