@@ -9,8 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filepath, sanitize_filename
 
-from tululu import (parse_book_page, get_response, check_for_redirect,
-                    download_book, download_image)
+from tululu import (parse_book_page, get_response, download_book, download_image)
 
 
 def get_books_urls(page_start, page_end=None):
@@ -97,9 +96,7 @@ def main():
         book_id = book_url['id']
         try:
             response = get_response(book_url['url'])
-            response.raise_for_status()
-            check_for_redirect(response)
-        except requests.HTTPError as e:
+        except requests.HTTPError:
             print(f'Не удается найти главную страницу книги по адресу: {url}'
                   , file=sys.stderr)
         except requests.ConnectionError as e:

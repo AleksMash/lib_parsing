@@ -10,11 +10,6 @@ import requests
 from retry import retry
 
 
-def check_for_redirect(response: requests.Response):
-    if response.history:
-        raise requests.HTTPError
-
-
 def parse_book_page(html, page_url):
     """Return dict with parsed book data:
         title, author, genres (list), comments (list), image file name, title image URL
@@ -56,17 +51,19 @@ def download_image(url, filename):
 def download_book(url, params, filename):
     """!!! filename must be a valid path
      to the *.txt file !!! Ensure that it is properly prepared"""
-    response = requests.get(url, params=params)
-    check_for_redirect(response)
-    response.raise_for_status()
+    response = get_response(url, params)
     with open(filename, 'wt') as file:
         file.write(response.text)
     return response
 
 
 @retry(requests.ConnectionError, jitter=0.5, tries=5)
-def get_response(url):
-    return requests.get(url)
+def get_response(url, params=None):
+    response = requests.get(url, params=params)
+    response.raise_for_status()
+    if response.history:
+        raise requests.HTTPError
+    return response
 
 
 def main():
@@ -88,8 +85,6 @@ def main():
     for book_id in range(first_id,last_id+1):
         try:
             response = get_response(f'https://tululu.org/b{book_id}/')
-            response.raise_for_status()
-            check_for_redirect(response)
         except requests.HTTPError as e:
             print(f'Не удается найти главную страницу книги по адресу:'
                   f'https://tululu.org/b{book_id}/', file=sys.stderr)
