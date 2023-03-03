@@ -114,8 +114,6 @@ def main():
                 try:
                     params = {'id': book_id}
                     count += 1
-                    if count == 3:
-                        break
                     filepath = os.path.join(folder, sanitize_filename(f'{count}-я книга. {parsed_book["title"]}.txt'))
                     response = download_book('https://tululu.org/txt.php', params, filepath)
                     parsed_book['book_path'] = filepath
@@ -140,10 +138,10 @@ def main():
                     sys.exit()
             about_books.append(parsed_book)
     if not skip_txt:
-        print(f'\nВсего скчано книг: {count}')
-    books_json = json.dumps(about_books, ensure_ascii=False, indent=4)
-    with open(json_path, "w") as my_file:
-        my_file.write(books_json)
+        print(f'\nВсего скачано книг: {count}')
+    # books_json = json.dump(about_books, ensure_ascii=False, indent=4)
+    with open(json_path, "w") as file:
+        json.dump(about_books, file, ensure_ascii=False, indent=4)
 
 
 if __name__ == "__main__":

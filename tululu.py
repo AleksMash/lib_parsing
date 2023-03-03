@@ -52,7 +52,7 @@ def download_book(url, params, filename):
     """!!! filename must be a valid path
      to the *.txt file !!! Ensure that it is properly prepared"""
     response = get_response(url, params)
-    with open(filename, 'wt') as file:
+    with open(filename, 'wt', encoding='UTF-8') as file:
         file.write(response.text)
     return response
 
