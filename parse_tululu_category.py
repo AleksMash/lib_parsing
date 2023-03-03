@@ -81,15 +81,15 @@ def main():
         print(f'Будут скачаны книги со страниц {first_page}-{max_page}')
         last_page = max_page + 1
     book_urls = get_books_urls(genre_first_page_url, first_page, last_page)
-    san_folder = sanitize_filepath(folder)
-    Path(san_folder, 'images').mkdir(parents=True, exist_ok=True)
+    folder = sanitize_filepath(folder)
+    Path(folder, 'images').mkdir(parents=True, exist_ok=True)
     if json_path:
-        san_json_path = sanitize_filepath(json_path)
+        json_path = sanitize_filepath(json_path)
         json_folder = os.path.split(json_path)[0]
         Path(json_folder).mkdir(parents=True, exist_ok=True)
     else:
-        san_json_path = Path(san_folder, 'book_info.json')
-    books_info = []
+        json_path = Path(folder, 'book_info.json')
+    about_books = []
     count = 0
     print('Ссылки на страницы книг получены.',
           '\nТекст книг скачан не будет (задана опция --skip_txt)' if skip_txt else '',
@@ -109,19 +109,19 @@ def main():
             print(e)
             sys.exit()
         else:
-            book_parsed = parse_book_page(response.text, response.url)
+            parsed_book = parse_book_page(response.text, response.url)
             if not skip_txt:
                 try:
                     params = {'id': book_id}
                     count += 1
                     if count == 3:
                         break
-                    filepath = os.path.join(san_folder, sanitize_filename(f'{count}-я книга. {book_parsed["title"]}.txt'))
+                    filepath = os.path.join(folder, sanitize_filename(f'{count}-я книга. {parsed_book["title"]}.txt'))
                     response = download_book('https://tululu.org/txt.php', params, filepath)
-                    book_parsed['book_path'] = filepath
+                    parsed_book['book_path'] = filepath
                 except requests.HTTPError:
                     print(f'Не удается найти ссылку для загрузки книги: {response.url}', file=sys.stderr)
-                    book_parsed['book_path'] = 'Не удалось найти ссылку для загрузки книги'
+                    parsed_book['book_path'] = 'Не удалось найти ссылку для загрузки книги'
                     count -= 1
                 except requests.ConnectionError as e:
                     print('Проблема с интернет-соединением', file=sys.stderr)
@@ -129,20 +129,20 @@ def main():
                     sys.exit()
             if not skip_imgs:
                 try:
-                    img_path = Path(Path.cwd(), san_folder,
-                                    'images', book_parsed['img_file_name'])
-                    download_image(book_parsed['img_url'], img_path)
+                    img_path = Path(Path.cwd(), folder,
+                                    'images', parsed_book['img_file_name'])
+                    download_image(parsed_book['img_url'], img_path)
                 except requests.HTTPError:
-                    print(f'Не удается скачать изображение с URL: {book_parsed["img_url"]}', file=sys.stderr)
+                    print(f'Не удается скачать изображение с URL: {parsed_book["img_url"]}', file=sys.stderr)
                 except requests.ConnectionError as e:
                     print('Проблема с интернет-соединением', file=sys.stderr)
                     print(e)
                     sys.exit()
-            books_info.append(book_parsed)
+            about_books.append(parsed_book)
     if not skip_txt:
         print(f'\nВсего скчано книг: {count}')
-    books_json = json.dumps(books_info, ensure_ascii=False, indent=4)
-    with open(san_json_path, "w") as my_file:
+    books_json = json.dumps(about_books, ensure_ascii=False, indent=4)
+    with open(json_path, "w") as my_file:
         my_file.write(books_json)
 
 
