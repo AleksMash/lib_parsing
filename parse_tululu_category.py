@@ -12,41 +12,24 @@ from pathvalidate import sanitize_filepath, sanitize_filename
 from tululu import (parse_book_page, get_response, download_book, download_image)
 
 
-def get_books_urls(page_start, page_end=None):
-    page_base_url = 'https://tululu.org/l55/'
+def get_books_urls(genre_url, page_start, page_end=None):
     book_urls = []
-    response = get_response(page_base_url)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'lxml')
-    max_page = int(soup.select('a.npage')[-1].text)
-    if page_start > max_page:
-        print(f'Первая страница, указанная при вызове скрипта больше'
-              f' максимального числа страниц ({max_page})')
-        sys.exit()
-    if page_end:
-        if page_end > max_page:
-            print(f'Последняя страница, указанная при вызове скрипта, превышает '
-                  f'максимальное число страниц ({max_page})\n'
-                  f'будут скачаны книги со страниц {page_start}-{max_page}')
-            page_end_checked = max_page + 1
+    for page in range(page_start, page_end):
+        url = urljoin(genre_url, str(page))
+        try:
+            response = get_response(url)
+        except (requests.HTTPError, requests.ConnectionError):
+            continue
         else:
-            page_end_checked = page_end + 1
-    else:
-        print(f'Будут скачаны книги со страниц {page_start}-{max_page}')
-        page_end_checked = max_page + 1
-    for page in range(page_start, page_end_checked):
-        url = urljoin(page_base_url, str(page))
-        response = get_response(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'lxml')
-        selector = 'div#content table.d_book'
-        tables = soup.select(selector)
-        for table in tables:
-            href = table.tr.a['href']
-            book_urls.append({
-                'url': urljoin('https://tululu.org/', href),
-                'id': href.removeprefix('/b').removesuffix('/')
-            })
+            soup = BeautifulSoup(response.text, 'lxml')
+            selector = 'div#content table.d_book'
+            tables = soup.select(selector)
+            for table in tables:
+                href = table.tr.a['href']
+                book_urls.append({
+                    'url': urljoin(genre_url, href),
+                    'id': href.removeprefix('/b').removesuffix('/')
+                })
     return book_urls
 
 
@@ -69,13 +52,35 @@ def main():
     skip_imgs = args.skip_imgs
     skip_txt = args.skip_txt
     json_path = args.json_path
-    if last_page and last_page < first_page:
-        print('Последня страница не может быть меньше первой')
-        return
+    genre_first_page_url = 'https://tululu.org/l55/'
     if first_page <= 0:
-        print('Первая страница должна быть не менее 1')
+        print('Номера страниц должны быть >= 1')
         return
-    book_urls = get_books_urls(first_page, last_page)
+    response = get_response(genre_first_page_url)
+    soup = BeautifulSoup(response.text, 'lxml')
+    max_page = int(soup.select('a.npage')[-1].text)
+    if last_page:
+        if last_page <= 0:
+            print('Номера страниц должны быть >= 1')
+            return
+        if last_page < first_page:
+            print('Последня страница не может быть меньше первой')
+            return
+        if first_page > max_page:
+            print(f'Первая страница, указанная при вызове скрипта больше'
+                  f' максимального числа страниц ({max_page})')
+            return
+        if last_page > max_page:
+            print(f'Последняя страница, указанная при вызове скрипта, превышает '
+                  f'максимальное число страниц ({max_page})\n'
+                  f'будут скачаны книги со страниц {first_page}-{max_page}')
+            last_page = max_page + 1
+        else:
+            last_page = last_page + 1
+    else:
+        print(f'Будут скачаны книги со страниц {first_page}-{max_page}')
+        last_page = max_page + 1
+    book_urls = get_books_urls(genre_first_page_url, first_page, last_page)
     san_folder = sanitize_filepath(folder)
     Path(san_folder, 'images').mkdir(parents=True, exist_ok=True)
     if json_path:
