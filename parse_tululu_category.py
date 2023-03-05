@@ -113,11 +113,10 @@ def main():
     count = 0
     print(
         "Ссылки на страницы книг получены.",
-        "\nТекст книг скачан не будет (задана опция --skip_txt)" if skip_txt else "",
-        "\nИзображения обложек скачаны не будут (задана опция --skip_imgs)"
-        if skip_imgs
-        else "",
-        "\nНачинаем обработку ссылок...\n",
+        "Текст книг скачан не будет (задана опция --skip_txt)" if skip_txt else "",
+        "Изображения обложек скачаны не будут (задана опция --skip_imgs)" if skip_imgs else "",
+        "Начинаем обработку ссылок...",
+        sep='\n'
     )
     for num, book_url in enumerate(book_urls):
         print(f'Обработка {book_url["url"]}')
@@ -178,11 +177,10 @@ def main():
                 except requests.ConnectionError as e:
                     print("Проблема с интернет-соединением", file=sys.stderr)
                     print(e)
-                    sys.exit()
+                    return
             about_books.append(parsed_book)
     if not skip_txt:
         print(f"\nВсего скачано книг: {count}")
-    # books_json = json.dump(about_books, ensure_ascii=False, indent=4)
     with open(json_path, "w") as file:
         json.dump(about_books, file, ensure_ascii=False, indent=4)
 
