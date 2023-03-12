@@ -98,8 +98,13 @@ def main():
         else:
             last_page = last_page + 1
     else:
-        print(f"Будут скачаны книги со страниц {first_page}-{max_page}")
-        last_page = max_page + 1
+        if first_page > max_page:
+            print("Первая страница, указанная при вызове скрипта больше"
+            f" максимального числа страниц ({max_page})")
+            return
+        else:
+            print(f"Будут скачаны книги со страниц {first_page}-{max_page}")
+            last_page = max_page + 1
     book_urls = get_books_urls(genre_first_page_url, first_page, last_page)
     folder = sanitize_filepath(folder)
     Path(folder, "images").mkdir(parents=True, exist_ok=True)
@@ -118,6 +123,8 @@ def main():
         "Начинаем обработку ссылок...",
         sep='\n'
     )
+    g = f"""Привет,
+    друзья {'ха ха'}"""
     for num, book_url in enumerate(book_urls):
         print(f'Обработка {book_url["url"]}')
         url = book_url["url"]
@@ -154,9 +161,7 @@ def main():
                         f"Не удается найти ссылку для загрузки книги: {response.url}",
                         file=sys.stderr,
                     )
-                    parsed_book[
-                        "book_path"
-                    ] = "Не удалось найти ссылку для загрузки книги"
+                    parsed_book["book_path"] = ""
                     count -= 1
                 except requests.ConnectionError as e:
                     print("Проблема с интернет-соединением", file=sys.stderr)
